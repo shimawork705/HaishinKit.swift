@@ -102,8 +102,25 @@ final class AudioIOComponent: IOComponent, DisplayLinkedQueueClockReference {
     }
 
     func appendSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
+        if encoder.muted {
+            mute(sampleBuffer)
+        }
         mixer?.recorder.appendSampleBuffer(sampleBuffer, mediaType: .audio)
         encoder.encodeSampleBuffer(sampleBuffer)
+    }
+    
+    func mute(_ sampleBuffer: CMSampleBuffer){
+        
+        guard let audioBlockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { return }
+        var lengthAtOffset:size_t = 0
+        var totalLength:size_t = 0
+        var samples:UnsafeMutablePointer<Int8>?
+        CMBlockBufferGetDataPointer(audioBlockBuffer, atOffset: 0, lengthAtOffsetOut: &lengthAtOffset, totalLengthOut: &totalLength, dataPointerOut: &samples)
+        
+        for i in 0..<totalLength {
+            samples?[i] = Int8(0)
+        }
+                  
     }
 
 #if os(iOS) || os(macOS)
