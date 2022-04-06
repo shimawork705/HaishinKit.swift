@@ -6,14 +6,17 @@ import AVFoundation
     }
 #endif
 
+protocol AVIOUnit {
+    var mixer: AVMixer? { get set }
+}
+
 protocol AVMixerDelegate: AnyObject {
     func mixer(_ mixer: AVMixer, didOutput audio: AVAudioPCMBuffer, presentationTimeStamp: CMTime)
     func mixer(_ mixer: AVMixer, didOutput video: CMSampleBuffer)
 }
 
+/// An object that mixies audio and video for streaming.
 public class AVMixer {
-    public static let bufferEmpty: Notification.Name = .init("AVMixerBufferEmpty")
-
     public static let defaultFPS: Float64 = 30
     public static let defaultVideoSettings: [NSString: AnyObject] = [
         kCVPixelBufferPixelFormatTypeKey: NSNumber(value: kCVPixelFormatType_32BGRA)
@@ -99,6 +102,7 @@ public class AVMixer {
     }
 
     private var _session: AVCaptureSession?
+    /// The capture session instance.
     public var session: AVCaptureSession {
         get {
             if _session == nil {
@@ -112,6 +116,8 @@ public class AVMixer {
         }
     }
     #endif
+    /// The recorder instance.
+    public lazy var recorder = AVRecorder()
 
     var settings: Setting<AVMixer, Option> = [:] {
         didSet {
@@ -121,81 +127,75 @@ public class AVMixer {
 
     weak var delegate: AVMixerDelegate?
 
-    private var _recorder: AVRecorder?
-    /// The recorder instance.
-    public var recorder: AVRecorder! {
-        if _recorder == nil {
-            _recorder = AVRecorder()
-        }
-        return _recorder
-    }
+    lazy var audioIO: AVAudioIOUnit = {
+        var audioIO = AVAudioIOUnit()
+        audioIO.mixer = self
+        return audioIO
+    }()
 
-    private var _audioIO: AudioIOComponent?
-    var audioIO: AudioIOComponent! {
-        if _audioIO == nil {
-            _audioIO = AudioIOComponent(mixer: self)
-        }
-        return _audioIO!
-    }
+    lazy var videoIO: AVVideoIOUnit = {
+        var videoIO = AVVideoIOUnit()
+        videoIO.mixer = self
+        return videoIO
+    }()
 
-    private var _videoIO: VideoIOComponent?
-    var videoIO: VideoIOComponent! {
-        if _videoIO == nil {
-            _videoIO = VideoIOComponent(mixer: self)
-        }
-        return _videoIO!
-    }
-
-    deinit {
-        dispose()
-    }
+    lazy var mediaLink: MediaLink = {
+        var mediaLink = MediaLink()
+        mediaLink.delegate = self
+        return mediaLink
+    }()
 
     public init() {
         settings.observer = self
     }
 
-    public func dispose() {
 #if os(iOS) || os(macOS)
+    deinit {
         if let session = _session, session.isRunning {
             session.stopRunning()
         }
+    }
 #endif
-        _audioIO?.dispose()
-        _audioIO = nil
-        _videoIO?.dispose()
-        _videoIO = nil
-    }
-
-    func didBufferEmpty(_ component: IOComponent) {
-        NotificationCenter.default.post(.init(name: AVMixer.bufferEmpty))
-    }
 }
 
 extension AVMixer {
     public func startEncoding(delegate: Any) {
-        videoIO.encoder.delegate = delegate as? VideoEncoderDelegate
+        videoIO.encoder.delegate = delegate as? VideoCodecDelegate
         videoIO.encoder.startRunning()
-        audioIO.encoder.delegate = delegate as? AudioCodecDelegate
-        audioIO.encoder.startRunning()
+        audioIO.codec.delegate = delegate as? AudioCodecDelegate
+        audioIO.codec.startRunning()
     }
 
     public func stopEncoding() {
         videoIO.encoder.delegate = nil
         videoIO.encoder.stopRunning()
-        audioIO.encoder.delegate = nil
-        audioIO.encoder.stopRunning()
+        audioIO.codec.delegate = nil
+        audioIO.codec.stopRunning()
     }
 }
 
 extension AVMixer {
     public func startDecoding(_ audioEngine: AVAudioEngine?) {
+        mediaLink.startRunning()
         audioIO.startDecoding(audioEngine)
         videoIO.startDecoding()
     }
 
     public func stopDecoding() {
+        mediaLink.stopRunning()
         audioIO.stopDecoding()
         videoIO.stopDecoding()
+    }
+}
+
+extension AVMixer: MediaLinkDelegate {
+    // MARK: MediaLinkDelegate
+    func mediaLink(_ mediaLink: MediaLink, dequeue sampleBuffer: CMSampleBuffer) {
+        _ = videoIO.decoder.decodeSampleBuffer(sampleBuffer)
+    }
+
+    func mediaLink(_ mediaLink: MediaLink, didBufferingChanged: Bool) {
+        logger.info(didBufferingChanged)
     }
 }
 

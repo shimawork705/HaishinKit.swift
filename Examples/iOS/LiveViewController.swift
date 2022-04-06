@@ -68,8 +68,6 @@ final class LiveViewController: UIViewController {
         audioBitrateSlider?.value = Float(RTMPStream.defaultAudioBitrate) / 1000
 
         NotificationCenter.default.addObserver(self, selector: #selector(on(_:)), name: UIDevice.orientationDidChangeNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(didEnterBackground(_:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(didBecomeActive(_:)), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -83,6 +81,8 @@ final class LiveViewController: UIViewController {
         }
         rtmpStream.addObserver(self, forKeyPath: "currentFPS", options: .new, context: nil)
         lfView?.attachStream(rtmpStream)
+        NotificationCenter.default.addObserver(self, selector: #selector(didInterruptionNotification(_:)), name: AVAudioSession.interruptionNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didRouteChangeNotification(_:)), name: AVAudioSession.routeChangeNotification, object: nil)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -90,7 +90,7 @@ final class LiveViewController: UIViewController {
         super.viewWillDisappear(animated)
         rtmpStream.removeObserver(self, forKeyPath: "currentFPS")
         rtmpStream.close()
-        rtmpStream.dispose()
+        NotificationCenter.default.removeObserver(self)
     }
 
     @IBAction func rotateCamera(_ sender: UIButton) {
@@ -156,7 +156,7 @@ final class LiveViewController: UIViewController {
         switch code {
         case RTMPConnection.Code.connectSuccess.rawValue:
             retryCount = 0
-            rtmpStream!.publish(Preference.defaultInstance.streamName!)
+            rtmpStream.publish(Preference.defaultInstance.streamName!)
             // sharedObject!.connect(rtmpConnection)
         case RTMPConnection.Code.connectFailed.rawValue, RTMPConnection.Code.connectClosed.rawValue:
             guard retryCount <= LiveViewController.maxRetryCount else {
@@ -215,21 +215,21 @@ final class LiveViewController: UIViewController {
     }
 
     @objc
+    private func didInterruptionNotification(_ notification: Notification) {
+        logger.info(notification)
+    }
+
+    @objc
+    private func didRouteChangeNotification(_ notification: Notification) {
+        logger.info(notification)
+    }
+
+    @objc
     private func on(_ notification: Notification) {
         guard let orientation = DeviceUtil.videoOrientation(by: UIApplication.shared.statusBarOrientation) else {
             return
         }
         rtmpStream.orientation = orientation
-    }
-
-    @objc
-    private func didEnterBackground(_ notification: Notification) {
-        // rtmpStream.receiveVideo = false
-    }
-
-    @objc
-    private func didBecomeActive(_ notification: Notification) {
-        // rtmpStream.receiveVideo = true
     }
 
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {

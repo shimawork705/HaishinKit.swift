@@ -34,16 +34,22 @@ open class NetStream: NSObject {
             }
         }
     }
+
+    /// Specify stream video orientation.
+    open var videoOrientation: AVCaptureVideoOrientation {
+        get { mixer.videoIO.orientation }
+        set { mixer.videoIO.orientation = newValue }
+    }
 #endif
 
     /// Specify stream audio compression properties.
     open var audioSettings: Setting<AudioCodec, AudioCodec.Option> {
-        get { mixer.audioIO.encoder.settings }
-        set { mixer.audioIO.encoder.settings = newValue }
+        get { mixer.audioIO.codec.settings }
+        set { mixer.audioIO.codec.settings = newValue }
     }
 
     /// Specify stream video compression properties.
-    open var videoSettings: Setting<H264Encoder, H264Encoder.Option> {
+    open var videoSettings: Setting<VideoCodec, VideoCodec.Option> {
         get { mixer.videoIO.encoder.settings }
         set { mixer.videoIO.encoder.settings = newValue }
     }
@@ -126,12 +132,6 @@ open class NetStream: NSObject {
     open func unregisterAudioEffect(_ effect: AudioEffect) -> Bool {
         mixer.audioIO.lockQueue.sync {
             self.mixer.audioIO.unregisterEffect(effect)
-        }
-    }
-
-    open func dispose() {
-        lockQueue.async {
-            self.mixer.dispose()
         }
     }
 

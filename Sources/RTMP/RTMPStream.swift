@@ -1,11 +1,32 @@
 import AVFoundation
 
+public protocol RTMPStreamDelegate: AnyObject {
+    func rtmpStream(_ stream: RTMPStream, didPublishInsufficientBW connection: RTMPConnection)
+    func rtmpStream(_ stream: RTMPStream, didPublishSufficientBW connection: RTMPConnection)
+    func rtmpStream(_ stream: RTMPStream, didOutput audio: AVAudioBuffer, presentationTimeStamp: CMTime)
+    func rtmpStream(_ stream: RTMPStream, didOutput video: CMSampleBuffer)
+    func rtmpStream(_ stream: RTMPStream, didStatics connection: RTMPConnection)
+    func rtmpStreamDidClear(_ stream: RTMPStream)
+}
+
+public extension RTMPStreamDelegate {
+    func rtmpStream(_ stream: RTMPStream, didStatics connection: RTMPConnection) {
+    }
+
+    func rtmpStream(_ stream: RTMPStream, didOutput audio: AVAudioBuffer, presentationTimeStamp: CMTime) {
+    }
+
+    func rtmpStream(_ stream: RTMPStream, didOutput video: CMSampleBuffer) {
+    }
+}
+
 /**
  flash.net.NetStream for Swift
  */
 open class RTMPStream: NetStream {
     /**
-     NetStatusEvent#info.code for NetStream
+      - NetStatusEvent#info.code for NetStream
+        - see: https://help.adobe.com/en_US/air/reference/html/flash/events/NetStatusEvent.html#NET_STATUS
      */
     public enum Code: String {
         case bufferEmpty               = "NetStream.Buffer.Empty"
@@ -87,7 +108,7 @@ open class RTMPStream: NetStream {
             case .playStop:
                 return "status"
             case .playStreamNotFound:
-                return "status"
+                return "error"
             case .playTransition:
                 return "status"
             case .playUnpublishNotify:
@@ -185,7 +206,7 @@ open class RTMPStream: NetStream {
 
     static let defaultID: UInt32 = 0
     public static let defaultAudioBitrate: UInt32 = AudioCodec.defaultBitrate
-    public static let defaultVideoBitrate: UInt32 = H264Encoder.defaultBitrate
+    public static let defaultVideoBitrate: UInt32 = VideoCodec.defaultBitrate
 
     open weak var delegate: RTMPStreamDelegate?
     open internal(set) var info = RTMPStreamInfo()
@@ -238,7 +259,7 @@ open class RTMPStream: NetStream {
             lockQueue.async {
                 switch self.readyState {
                 case .publish, .publishing:
-                    self.mixer.audioIO.encoder.muted = self.paused
+                    self.mixer.audioIO.codec.muted = self.paused
                     self.mixer.videoIO.encoder.muted = self.paused
                 default:
                     break
@@ -416,7 +437,7 @@ open class RTMPStream: NetStream {
         }
         if let _: AVCaptureInput = mixer.audioIO.input {
             metadata["audiocodecid"] = FLVAudioCodec.aac.rawValue
-            metadata["audiodatarate"] = mixer.audioIO.encoder.bitrate / 1000
+            metadata["audiodatarate"] = mixer.audioIO.codec.bitrate / 1000
         }
 #endif
         return metadata
@@ -461,9 +482,9 @@ open class RTMPStream: NetStream {
             #if os(iOS)
                 mixer.videoIO.screen?.stopRunning()
             #endif
-            mixer.audioIO.encoder.delegate = nil
+            mixer.audioIO.codec.delegate = nil
             mixer.videoIO.encoder.delegate = nil
-            mixer.audioIO.encoder.stopRunning()
+            mixer.audioIO.codec.stopRunning()
             mixer.videoIO.encoder.stopRunning()
             mixer.recorder.stopRunning()
         default:
@@ -500,16 +521,15 @@ open class RTMPStream: NetStream {
             #if os(iOS)
                 mixer.videoIO.screen?.startRunning()
             #endif
-            mixer.audioIO.encoder.delegate = muxer
+            mixer.audioIO.codec.delegate = muxer
             mixer.videoIO.encoder.delegate = muxer
-            // sampler?.delegate = muxer
             mixer.startRunning()
             videoWasSent = false
             audioWasSent = false
             FCPublish()
         case .publishing:
             send(handlerName: "@setDataFrame", arguments: "onMetaData", createMetaData())
-            mixer.audioIO.encoder.startRunning()
+            mixer.audioIO.codec.startRunning()
             mixer.videoIO.encoder.startRunning()
             if howToPublish == .localRecord {
                 mixer.recorder.fileName = FilenameUtil.fileName(resourceName: info.resourceName)
@@ -530,6 +550,8 @@ open class RTMPStream: NetStream {
         case RTMPConnection.Code.connectSuccess.rawValue:
             readyState = .initialized
             rtmpConnection.createStream(self)
+        case RTMPStream.Code.playReset.rawValue:
+            readyState = .play
         case RTMPStream.Code.playStart.rawValue:
             readyState = .playing
         case RTMPStream.Code.publishStart.rawValue:
