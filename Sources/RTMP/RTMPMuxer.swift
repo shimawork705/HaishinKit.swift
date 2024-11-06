@@ -15,11 +15,37 @@ final class RTMPMuxer {
     private var audioTimeStamp = CMTime.zero
     private var videoTimeStamp = CMTime.zero
 
+  //  Audioバッファ関連データ
+  private var videoDifTime: Double = 0.0
+  private var isBuffering : Bool = false
+  private var audioBufferingTime: Double = 0.0
+  private var buffers : [Data?] = []
+  private var deltas: [Double] = []
+  private var bufferCount: Int = 0
+
     func dispose() {
         configs.removeAll()
         audioTimeStamp = CMTime.zero
         videoTimeStamp = CMTime.zero
+
+      //  Audioバッファデータ初期化
+      initAudioBuffer()
     }
+  deinit
+  {
+    print("deinit")
+    initAudioBuffer()
+  }
+  
+  /// Audioバッファデータ初期化
+  private func initAudioBuffer() {
+    videoDifTime = 0.0
+    isBuffering = false
+    audioBufferingTime = 0.0
+    buffers.removeAll()
+    deltas.removeAll()
+    bufferCount = 0
+  }
 }
 
 extension RTMPMuxer: AudioCodecDelegate {
@@ -40,9 +66,58 @@ extension RTMPMuxer: AudioCodecDelegate {
         }
         var buffer = Data([RTMPMuxer.aac, FLVAACPacketType.raw.rawValue])
         buffer.append(bytes.assumingMemoryBound(to: UInt8.self), count: Int(sample[0].mDataByteSize))
+
+      /*
+      delegate?.sampleOutput(audio: buffer, withTimestamp: delta, muxer: self)
+      audioTimeStamp = presentationTimeStamp
+      */
+
+      print("AudioTimeStamp: \(presentationTimeStamp.seconds),VideoTimeStamp: \(videoTimeStamp.seconds) difTime: \(presentationTimeStamp.seconds-videoTimeStamp.seconds)")
+      //  ライブ配信開始時にずれている場合だけを補正の対象とする
+      //  何かと問題の多いアプリなので条件を限定して補正
+      if videoTimeStamp != .zero, videoDifTime == .zero {
+        videoDifTime = presentationTimeStamp.seconds - videoTimeStamp.seconds
+//        videoDifTime = 5.0
+      }
+
+      if videoTimeStamp == .zero || audioBufferingTime < videoDifTime {
+        isBuffering = true
+
+        if 1.0 < audioBufferingTime {
+          //  1秒以上になった場合は先頭データを消去後に最新データを追加
+          buffers.removeFirst()
+          deltas.removeFirst()
+        }
+        buffers.append(buffer)
+        deltas.append(delta)
+        bufferCount += 1
+
+        var outBuffer = Data([RTMPMuxer.aac, FLVAACPacketType.raw.rawValue])
+        bytes.initializeMemory(as: UInt.self, repeating: 0, count: Int(sample[0].mDataByteSize))
+        outBuffer.append(bytes.assumingMemoryBound(to: UInt8.self), count: Int(sample[0].mDataByteSize))
+
         delegate?.sampleOutput(audio: buffer, withTimestamp: delta, muxer: self)
+
         audioTimeStamp = presentationTimeStamp
+        audioBufferingTime += (delta/1000)
+        print("AudioBuffer Add: \(bufferCount)")
+
+      } else {
+        print("AudioBufferCount: \(bufferCount)")
+        isBuffering = false
+        delegate?.sampleOutput(audio: buffers[0]!, withTimestamp: deltas[0], muxer: self)
+        audioTimeStamp = presentationTimeStamp
+        buffers.removeFirst()
+        deltas.removeFirst()
+        buffers.append(buffer)
+        deltas.append(delta)
+      }
+
     }
+
+  func isBufferingAudio() -> Bool {
+    return isBuffering
+  }
 }
 
 extension RTMPMuxer: VideoEncoderDelegate {

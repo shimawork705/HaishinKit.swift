@@ -209,6 +209,10 @@ public class TSWriter: Running {
 }
 
 extension TSWriter: AudioCodecDelegate {
+  public func isBufferingAudio() -> Bool {
+    return false
+  }
+  
     // MARK: AudioCodecDelegate
     public func audioCodec(_ codec: AudioCodec, didSet formatDescription: CMFormatDescription?) {
         guard let formatDescription: CMAudioFormatDescription = formatDescription else {

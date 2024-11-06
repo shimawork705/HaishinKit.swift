@@ -266,6 +266,8 @@ open class RTMPStream: NetStream {
     private var howToPublish: RTMPStream.HowToPublish = .live
     private var rtmpConnection: RTMPConnection
 
+  private var audioAccumulationTime : Double = 0.0
+  private var videoAccumulationTime : Double = 0.0
     public init(connection: RTMPConnection) {
         self.rtmpConnection = connection
         super.init()
@@ -594,6 +596,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         audioWasSent = true
         info.byteCount.mutate { $0 += Int64(length) }
         audioTimestamp = withTimestamp + (audioTimestamp - floor(audioTimestamp))
+      audioAccumulationTime += (withTimestamp / 1000)
     }
 
     func sampleOutput(video buffer: Data, withTimestamp: Double, muxer: RTMPMuxer) {
@@ -614,6 +617,7 @@ extension RTMPStream: RTMPMuxerDelegate {
         info.byteCount.mutate { $0 += Int64(length) }
         videoTimestamp = withTimestamp + (videoTimestamp - floor(videoTimestamp))
         frameCount += 1
+      videoAccumulationTime += (withTimestamp/1000)
     }
 }
 

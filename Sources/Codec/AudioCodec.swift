@@ -3,6 +3,7 @@ import AVFoundation
 public protocol AudioCodecDelegate: AnyObject {
     func audioCodec(_ codec: AudioCodec, didSet formatDescription: CMFormatDescription?)
     func audioCodec(_ codec: AudioCodec, didOutput sample: UnsafeMutableAudioBufferListPointer, presentationTimeStamp: CMTime)
+    func isBufferingAudio() -> Bool
 }
 
 // MARK: -
@@ -186,7 +187,7 @@ public class AudioCodec {
                 for effect in effects {
                     effect.execute(currentAudioBuffer.input, format: inSourceFormat)
                 }
-                if muted {
+              if muted || delegate?.isBufferingAudio() ?? false {
                     currentAudioBuffer.muted()
                 }
                 convert(currentAudioBuffer.maxLength, presentationTimeStamp: currentAudioBuffer.presentationTimeStamp)

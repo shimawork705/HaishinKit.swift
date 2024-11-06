@@ -194,6 +194,10 @@ extension AudioIOComponent: AVCaptureAudioDataOutputSampleBufferDelegate {
 }
 
 extension AudioIOComponent: AudioCodecDelegate {
+  func isBufferingAudio() -> Bool {
+    return false
+  }
+  
     // MARK: AudioConverterDelegate
     func audioCodec(_ codec: AudioCodec, didSet formatDescription: CMFormatDescription?) {
         guard let formatDescription = formatDescription else {

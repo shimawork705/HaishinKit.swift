@@ -16,6 +16,10 @@ final class MP4FragmentedWriter: MP4WriterConvertible {
 }
 
 extension MP4FragmentedWriter: AudioCodecDelegate {
+  func isBufferingAudio() -> Bool {
+    return false
+  }
+  
     // MARK: AudioCodecDelegate
     func audioCodec(_ codec: AudioCodec, didSet formatDescription: CMFormatDescription?) {
     }
