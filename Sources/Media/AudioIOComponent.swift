@@ -194,7 +194,7 @@ extension AudioIOComponent: AVCaptureAudioDataOutputSampleBufferDelegate {
 }
 
 extension AudioIOComponent: AudioCodecDelegate {
-  func isBufferingAudio() -> Bool {
+  func isFirstBufferingAudio() -> Bool {
     return false
   }
   

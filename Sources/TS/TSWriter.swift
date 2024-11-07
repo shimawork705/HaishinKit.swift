@@ -209,7 +209,7 @@ public class TSWriter: Running {
 }
 
 extension TSWriter: AudioCodecDelegate {
-  public func isBufferingAudio() -> Bool {
+  public func isFirstBufferingAudio() -> Bool {
     return false
   }
   

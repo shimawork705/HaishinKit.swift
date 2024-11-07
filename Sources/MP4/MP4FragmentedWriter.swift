@@ -16,7 +16,7 @@ final class MP4FragmentedWriter: MP4WriterConvertible {
 }
 
 extension MP4FragmentedWriter: AudioCodecDelegate {
-  func isBufferingAudio() -> Bool {
+  func isFirstBufferingAudio() -> Bool {
     return false
   }
   

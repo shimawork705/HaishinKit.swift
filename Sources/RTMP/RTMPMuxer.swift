@@ -115,8 +115,8 @@ extension RTMPMuxer: AudioCodecDelegate {
 
     }
 
-  func isBufferingAudio() -> Bool {
-    return isBuffering
+  func isFirstBufferingAudio() -> Bool {
+    return isFirstBuffering
   }
 }
 
