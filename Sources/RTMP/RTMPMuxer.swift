@@ -38,7 +38,6 @@ final class RTMPMuxer {
   
   /// Audioバッファデータ初期化
   private func initAudioBuffer() {
-    videoDifTime = 0.0
     isFirstBuffering = true
     audioBufferingTime = 0.0
     buffers.removeAll()
