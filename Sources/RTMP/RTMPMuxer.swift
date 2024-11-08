@@ -16,13 +16,13 @@ final class RTMPMuxer {
     private var videoTimeStamp = CMTime.zero
 
   //  Audioバッファ関連データ
-  private let isAudioBuffering: Bool = false //  Audio Buffering機能ON/OFF
   private var videoDifTime: Double = 0.0
   private var isFirstBuffering : Bool = true
   private var audioBufferingTime: Double = 0.0
   private var buffers : [Data?] = []
   private var deltas: [Double] = []
   private var bufferCount: Int = 0
+  private let isAudioBuffering: Bool = true //  Audio Buffering機能ON/OFF
 
     func dispose() {
         configs.removeAll()
