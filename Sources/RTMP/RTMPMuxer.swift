@@ -74,7 +74,7 @@ extension RTMPMuxer: AudioCodecDelegate {
           ((delta/1000) > videoDifTime && 0 == bufferCount ) {
         delegate?.sampleOutput(audio: buffer, withTimestamp: delta, muxer: self)
         audioTimeStamp = presentationTimeStamp
-        print("AudioBuffer Not")
+//        print("AudioBuffer Not")
         if videoTimeStamp != .zero {
           //  初回バッファリングフラグOFF
           isFirstBuffering = false
@@ -97,7 +97,7 @@ extension RTMPMuxer: AudioCodecDelegate {
 
           audioTimeStamp = presentationTimeStamp
           audioBufferingTime += (delta/1000)
-          print("AudioBuffer Add: \(bufferCount)")
+//          print("AudioBuffer Add: \(bufferCount)")
 
         } else {
 //          print("AudioBufferCount: \(bufferCount)")
