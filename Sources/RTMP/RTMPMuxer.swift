@@ -88,8 +88,10 @@ extension RTMPMuxer: AudioCodecDelegate {
         delegate?.sampleOutput(audio: buffer, withTimestamp: delta, muxer: self)
         audioTimeStamp = presentationTimeStamp
         print("AudioBuffer Not")
-        //  初回バッファリングフラグOFF
-        isFirstBuffering = false
+        if videoTimeStamp != .zero {
+          //  初回バッファリングフラグOFF
+          isFirstBuffering = false
+        }
       }
       else {
         //  映像・音声の時間差を埋めるため音声データをバッファリング
