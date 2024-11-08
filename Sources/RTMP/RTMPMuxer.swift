@@ -16,13 +16,12 @@ final class RTMPMuxer {
     private var videoTimeStamp = CMTime.zero
 
   //  Audioバッファ関連データ
-  private var videoDifTime: Double = 0.0
-  private var isFirstBuffering : Bool = true
-  private var audioBufferingTime: Double = 0.0
-  private var buffers : [Data?] = []
-  private var deltas: [Double] = []
-  private var bufferCount: Int = 0
   private let isAudioBuffering: Bool = true //  Audio Buffering機能ON/OFF
+  private var isFirstBuffering : Bool = true  //  初回バッファリング対象ON/OFFフラグ
+  private var audioBufferingTime: Double = 0.0  //  オーディオデータのバッファリング時間
+  private var buffers : [Data?] = []  //  オーディオデータバッファ
+  private var deltas: [Double] = []   //  オーディオ時間バッファ
+  private var bufferCount: Int = 0    //  バッファ数
 
     func dispose() {
         configs.removeAll()
@@ -34,7 +33,6 @@ final class RTMPMuxer {
     }
   deinit
   {
-    print("deinit")
     initAudioBuffer()
   }
   
@@ -69,19 +67,9 @@ extension RTMPMuxer: AudioCodecDelegate {
         buffer.append(bytes.assumingMemoryBound(to: UInt8.self), count: Int(sample[0].mDataByteSize))
 
 
-      //  ライブ配信開始時にずれている場合だけを補正の対象とする
-      //  何かと問題の多いアプリなので条件を限定して補正
-//        if videoTimeStamp != .zero, videoDifTime == .zero {
-        videoDifTime = presentationTimeStamp.seconds - videoTimeStamp.seconds
-//        videoDifTime = 1.0
-//        }
-//      print("AudioTimeStamp: \(presentationTimeStamp.seconds),VideoTimeStamp: \(videoTimeStamp.seconds) difTime: \(presentationTimeStamp.seconds-videoTimeStamp.seconds) delta:\(delta/1000)")
-/*
-      if videoTimeStamp == .zero {
-        return
-      }
- */
-      //  バッファリング機能OFF or 映像差分がdelta秒未満の場合はそのまま出力
+      let videoDifTime = presentationTimeStamp.seconds - videoTimeStamp.seconds
+
+      //  バッファリング機能OFF or (映像差分がdelta秒未満 and バッファリングデータ無しの場合)はそのまま出力
       if !isAudioBuffering ||
           videoTimeStamp == .zero ||
           ((delta/1000) > videoDifTime && 0 == bufferCount ) {
